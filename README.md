@@ -64,7 +64,16 @@ JWT_EXPIRE_MINUTES=1440
 SMTP_EMAIL=your_email@gmail.com
 SMTP_PASSWORD=your_app_password
 ```
-> **Note for Gmail Users:** If you are using a Gmail address for `SMTP_EMAIL`, you cannot use your standard password. You must generate a 16-character "App Password" via your Google Account's 2-Step Verification security settings and paste it into `SMTP_PASSWORD` without spaces.
+> **Note for Gmail Users:** If you are using a Gmail address for `SMTP_EMAIL`, you cannot use your standard password due to Google's security policies. You must generate a 16-character "App Password".
+> 
+> **How to get a Gmail App Password:**
+> 1. Go to your [Google Account Security page](https://myaccount.google.com/security).
+> 2. Scroll down to the **"How you sign in to Google"** section.
+> 3. Ensure **2-Step Verification** is turned **ON** (this is strictly required).
+> 4. Click on **2-Step Verification**, scroll to the bottom, and click on **App passwords**. *(Alternatively, search "App Passwords" in the top Google Account search bar).*
+> 5. Create a new app password: type a custom name like `Smart Scheduler` and click **Generate**.
+> 6. Google will display a 16-character password in a yellow box. 
+> 7. Copy it and paste it into your `.env` file as your `SMTP_PASSWORD` (**Make sure to remove any spaces**).
 
 **4. Start the Backend Server:**
 ```bash
