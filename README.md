@@ -1,108 +1,147 @@
-# Smart Scheduler Custom
-
-A full-stack intelligent scheduling application built with a FastAPI (Python) backend and a React (Vite) frontend. 
-
-## Features
-- **Dynamic Slot Finding**: An intelligent sliding-window algorithm that factors in preferred weekdays, avoid days, and public holidays to find the absolute best consecutive free days for your schedule.
-- **Google Calendar-style UI**: A fully custom, responsive frontend built with React that renders user events and public holidays cleanly in an aesthetic grid view.
-- **Event Reminders**: Built-in background task scheduler (APScheduler) which automatically sends you an email reminder prior to your scheduled event!
-- **JWT Authentication**: Secure user login, session management, and encrypted configurations.
-
-## Table of Contents
-- [Installation](#installation)
-- [Backend Setup (.env)](#backend-setup)
-- [Frontend Setup](#frontend-setup)
+<div align="center">
+  <h1>📅 Smart Scheduler</h1>
+  <p><strong>A full-stack intelligent scheduling application built with a FastAPI (Python) backend and a React (Vite) frontend.</strong></p>
+</div>
 
 ---
 
-## Installation
+## 📖 Overview
 
-**1. Download the Project**
-- **Via ZIP**: On the GitHub repository page, click the green `<> Code` button and select **"Download ZIP"**. Extract the ZIP file to your desired folder on your computer.
-- **Via Git Clone**:
-  ```bash
-  git clone https://github.com/HimasagarU/Smart-Scheduler-Custom.git
-  cd Smart-Scheduler-Custom
-  ```
+Smart Scheduler represents an innovative way to bypass the cognitive load of matching schedules. Instead of manually scanning your calendar to figure out which days you are free, Smart Scheduler utilizes a smart sliding-window algorithm that automatically discovers the **absolute best consecutive free days**. It factors in your requested "avoid days," public holidays, and existing events so you don't have to. 
+
+## ✨ Key Features
+
+- **🧠 Intelligent Slot Finding**: Our sliding-window algorithm automatically calculates and ranks the most optimal sequence of days for your scheduling needs, removing the overlap of weekends, your selected "avoid days", or public holidays.
+- **🎨 Custom Calendar Interface**: A clean, modern, and highly responsive frontend built with **React** (`lucide-react`, `react-calendar`) that visually charts your events, public holidays, and preferred free slots.
+- **📧 Automated Event Reminders**: Out-of-the-box email reminders using a built-in background task scheduler (`APScheduler`). Get an alert shortly before your event begins!
+- **🔐 Secure JWT Authentication**: Robust user authentication and session management built using JSON Web Tokens (JWT), alongside secure password hashing via `passlib[bcrypt]`.
+- **🚀 High Performance**: Powered by asynchronous Python (`FastAPI`), fetching data seamlessly from a NoSQL **MongoDB** database (`motor`).
+
+## 🛠️ Technology Stack
+
+### Backend
+* **Python 3** & **FastAPI** (High-performance Async Web Framework)
+* **MongoDB** (Database) & **Motor** (Async Driver)
+* **APScheduler** (Background Job Scheduling & Email Reminders)
+* **Passlib & Python-JOSE** (Bcrypt Hashing & JWT Auth)
+* **Python-Holidays** (Dynamically calculating region-specific holidays)
+
+### Frontend
+* **React 19** & **Vite** (Lightning Fast Development Environment)
+* **React Router DOM** (Client-side Routing)
+* **Lucide React** (Beautiful, Consistent Iconography)
+* **Axios** (Promise-based HTTP client for the browser)
 
 ---
 
-## Backend Setup
+## 📂 Project Structure
 
-The backend is built with Python 3 and FastAPI, using MongoDB for data storage and APScheduler for email reminders.
-
-**1. Navigate to the backend directory:**
-```bash
-cd backend
+```
+Smart-Scheduler-Custom/
+├── backend/                  # FastAPI Application
+│   ├── app/
+│   │   ├── api/              # Route Handlers (auth, events, slots)
+│   │   ├── core/             # Configuration & Security (JWT, Config)
+│   │   ├── db/               # MongoDB Connection Logic
+│   │   ├── models/           # Pydantic Schemas & DB Models
+│   │   └── services/         # Business Logic & APScheduler Background tasks
+│   ├── main.py               # FastAPI App Entrypoint
+│   └── requirements.txt      # Python Dependencies
+└── frontend/                 # React + Vite Application
+    ├── public/               # Static base assets
+    ├── src/
+    │   ├── components/       # Reusable React UI Components
+    │   ├── pages/            # View Pages (Dashboard, Login, Calendar)
+    │   ├── App.jsx           # Root App Component & Router
+    │   └── main.jsx          # React DOM Render Entry
+    ├── package.json          # Node Dependencies & Scripts
+    └── vite.config.js        # Vite Build Config
 ```
 
-**2. Create a Virtual Environment & Install Dependencies:**
-It is highly recommended to use a virtual environment.
+---
+
+## 🚀 Installation & Setup
+
+### 1. Clone the Repository
 ```bash
+git clone https://github.com/HimasagarU/Smart-Scheduler-Custom.git
+cd Smart-Scheduler-Custom
+```
+
+### 2. Backend Setup
+The backend requires Python 3 to be installed. It utilizes MongoDB for data persistence.
+
+```bash
+cd backend
 python -m venv venv
 
-# On Windows:
+# Activate Virtual Environment (Windows)
 venv\Scripts\activate
-# On Mac/Linux:
+# Activate Virtual Environment (Mac/Linux)
 source venv/bin/activate
 
-# Install required packages
+# Install Dependencies
 pip install -r requirements.txt
 ```
 
-**3. Configure Environment Variables (`.env`):**
-Create a new file named exactly `.env` directly inside the `backend/` folder and paste the following configuration details into it:
+**Environment Variables (`.env`)**
+Create a new file named exactly `.env` inside the `backend/` directory:
 ```env
-# MongoDB Connection String (Ensure you have MongoDB installed and running locally on port 27017, or replace with an Atlas URI)
+# MongoDB Connection String
 MONGO_URI=mongodb://localhost:27017
 
-# JWT Authentication
+# JWT Authentication Config
 JWT_SECRET=super_secret_dev_key_12345
 JWT_EXPIRE_MINUTES=1440
 
-# Email configurations for APScheduler Reminders (Required for email functionality)
+# Email configurations for APScheduler Reminders
 SMTP_EMAIL=your_email@gmail.com
 SMTP_PASSWORD=your_app_password
 ```
-> **Note for Gmail Users:** If you are using a Gmail address for `SMTP_EMAIL`, you cannot use your standard password due to Google's security policies. You must generate a 16-character "App Password".
-> 
-> **How to get a Gmail App Password:**
-> 1. Go to your [Google Account Security page](https://myaccount.google.com/security).
-> 2. Scroll down to the **"How you sign in to Google"** section.
-> 3. Ensure **2-Step Verification** is turned **ON** (this is strictly required).
-> 4. Click on **2-Step Verification**, scroll to the bottom, and click on **App passwords**. *(Alternatively, search "App Passwords" in the top Google Account search bar).*
-> 5. Create a new app password: type a custom name like `Smart Scheduler` and click **Generate**.
-> 6. Google will display a 16-character password in a yellow box. 
-> 7. Copy it and paste it into your `.env` file as your `SMTP_PASSWORD` (**Make sure to remove any spaces**).
+> **Note on Gmail SMTP**: If you are using Gmail, standard passwords won't work. Generate an **App Password** via your Google Account's 2-Step Verification settings.
 
-**4. Start the Backend Server:**
+**Run the Backend Server:**
 ```bash
 uvicorn main:app --reload --port 8000
 ```
-The backend API will now be running continuously on `http://localhost:8000`. Leave this terminal window running.
+> The API will be available at `http://localhost:8000`. You can visit `http://localhost:8000/docs` for the interactive Swagger UI.
 
----
+### 3. Frontend Setup
+Open a new terminal window to keep the backend running in the background.
 
-## Frontend Setup
-
-The frontend is built with React and Vite.
-
-**1. Navigate to the frontend directory:**
-Open a *new* separate terminal window/tab so your backend isn't interrupted, and navigate to the frontend:
 ```bash
 cd frontend
-```
-
-**2. Install Node Dependencies:**
-Ensure you have Node.js installed, then run:
-```bash
 npm install
-```
-
-**3. Start the Frontend Development Server:**
-```bash
 npm run dev
 ```
 
-**4. Explore the App:**
-Open your browser and navigate to the local URL provided by Vite (usually `http://localhost:5173`). Create an account, browse the Dashboard, and begin scheduling events!
+> The application will run locally, usually on `http://localhost:5173`. Open this in your browser to start scheduling!
+
+---
+
+## 💡 How It Works (The Algorithm)
+
+The Smart Scheduler relies on a specialized scheduling algorithm designed to find consecutive available days. When searching for slots:
+1. **Fetch Preferences**: The system evaluates your chosen criteria (e.g., finding $N$ free days between start date $X$ and end date $Y$).
+2. **Holiday Mapping**: It maps out public holidays via the `holidays` Python package for your specified country.
+3. **Blackout Window Mapping**: Generates a fast lookup table comprising the user's "avoid days," country holidays, and pre-existing events.
+4. **Sliding Window Validation**: A sliding window of size $N$ traverses the allowed timeline. Windows that overlap with a blackout day are instantly moved forward, preventing unnecessary checks. 
+5. **Score & Sort**: Qualifying slots are presented back to the user seamlessly.
+
+---
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are always welcome! 
+
+1. **Fork** the project
+2. **Create** your feature branch (`git checkout -b feature/AmazingFeature`)
+3. **Commit** your changes (`git commit -m 'Add some AmazingFeature'`)
+4. **Push** to the branch (`git push origin feature/AmazingFeature`)
+5. **Open** a Pull Request
+
+---
+
+## 📝 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
