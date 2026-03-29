@@ -18,8 +18,7 @@ async def find_free_slots(user_id: str, n_days: int, month: int, year: int,
     
     in_holidays = holidays.India(years=[year, year+1])
 
-    for offset in range(4): # Check current month + next 3 months as fallback
-        # compute next month correctly based on offset
+    for offset in range(4): # Check current month and next 3 months if current month not available
         m = month + offset
         y = year + (m - 1) // 12
         m = (m - 1) % 12 + 1
@@ -30,16 +29,14 @@ async def find_free_slots(user_id: str, n_days: int, month: int, year: int,
         _, last_day = calendar.monthrange(check_year, check_month)
         
         today = date.today()
-        # Dates must be in the future
         start_day = today.day + 1 if today.year == check_year and today.month == check_month else 1
         start_day = max(1, start_day)
         
         if today.year > check_year or (today.year == check_year and today.month > check_month):
-            continue # Past month
+            continue
             
         all_days = [date(check_year, check_month, d) for d in range(start_day, last_day + 1)]
         
-        # Get user events for that month
         start_of_month_str = f"{check_year}-{check_month:02d}-01"
         end_of_month_str = f"{check_year}-{check_month:02d}-{last_day:02d}"
         
@@ -64,7 +61,6 @@ async def find_free_slots(user_id: str, n_days: int, month: int, year: int,
         for i in range(len(all_days) - n_days + 1):
             window = all_days[i:i+n_days]
             
-            # Check validity
             is_valid = True
             for d in window:
                 if d in busy_days:
@@ -80,7 +76,7 @@ async def find_free_slots(user_id: str, n_days: int, month: int, year: int,
             if not is_valid:
                 continue
                 
-            # Calculate preference score
+            # preference score
             score = 0
             for d in window:
                 if holiday_pref == "prefer" and d in in_holidays:
@@ -95,7 +91,6 @@ async def find_free_slots(user_id: str, n_days: int, month: int, year: int,
             })
                 
         if valid_slots:
-            # Sort by descending score
             valid_slots.sort(key=lambda x: x["score"], reverse=True)
             
             message = "Found slots" if offset == 0 else f"No slots in original month. Next available: {calendar.month_name[check_month]}"
