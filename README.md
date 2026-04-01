@@ -11,11 +11,14 @@ Smart Scheduler represents an innovative way to bypass the cognitive load of mat
 
 ## ✨ Key Features
 
-- **🧠 Intelligent Slot Finding**: Our sliding-window algorithm automatically calculates and ranks the most optimal sequence of days for your scheduling needs, removing the overlap of weekends, your selected "avoid days", or public holidays.
-- **🎨 Custom Calendar Interface**: A clean, modern, and highly responsive frontend built with **React** (`lucide-react`, `react-calendar`) that visually charts your events, public holidays, and preferred free slots.
-- **📧 Automated Event Reminders**: Out-of-the-box email reminders using a built-in background task scheduler (`APScheduler`). Get an alert shortly before your event begins!
-- **🔐 Secure JWT Authentication**: Robust user authentication and session management built using JSON Web Tokens (JWT), alongside secure password hashing via `passlib[bcrypt]`.
-- **🚀 High Performance**: Powered by asynchronous Python (`FastAPI`), fetching data seamlessly from a NoSQL **MongoDB** database (`motor`).
+- **🧠 Intelligent Slot Finding:** Our core sliding-window algorithm discovers the optimal chronological sequence of free days, bypassing weekends, user-defined "avoid days," and public holidays map.
+- **🕒 Deadline (Backward) Scheduling:** Need a task done *before* a specific date? The Deadline Scheduler works backwards from your deadline to find the latest possible free window.
+- **🤝 Multi-User Overlap Finder:** Compare your schedule against a colleague's to automatically find mutually free days.
+- **🏢 Organization-Based Consent:** Simply tag your account with your Organization name. If two users belong to the same Organization, they can instantly schedule and link shared events (👥) directly on each other's calendars without cumbersome invite loops.
+- **🎨 Custom Calendar Interface:** A modern, highly responsive frontend built with **React** (`lucide-react`, `react-calendar`). Features clear color-coding, interactive modals, and distinct "Shared Event" markers. 
+- **🧨 Smart Linked Deletions:** Event organizers can opt to remove an event just for themselves, or "Cancel for everyone"—which automatically unschedules email reminders and removes the calendar blocks for all participants.
+- **📧 Automated Event Reminders:** Background task scheduler (`APScheduler`) sends email alerts before your event begins.
+- **🔐 Secure JWT Authentication:** User authentication and session management via JSON Web Tokens (JWT) and `passlib[bcrypt]`.
 
 ## 🛠️ Technology Stack
 
@@ -121,12 +124,14 @@ npm run dev
 
 ## 💡 How It Works (The Algorithm)
 
-The Smart Scheduler relies on a specialized scheduling algorithm designed to find consecutive available days. When searching for slots:
-1. **Fetch Preferences**: The system evaluates your chosen criteria (e.g., finding $N$ free days between start date $X$ and end date $Y$).
-2. **Holiday Mapping**: It maps out public holidays via the `holidays` Python package for your specified country.
-3. **Blackout Window Mapping**: Generates a fast lookup table comprising the user's "avoid days," country holidays, and pre-existing events.
-4. **Sliding Window Validation**: A sliding window of size $N$ traverses the allowed timeline. Windows that overlap with a blackout day are instantly moved forward, preventing unnecessary checks. 
-5. **Score & Sort**: Qualifying slots are presented back to the user seamlessly.
+The Smart Scheduler relies on specialized scheduling algorithms designed to find consecutive available days. 
+
+1. **Forward Search:** Evaluates criteria (e.g., finding $N$ free days between start date $X$ and end date $Y$).
+2. **Backward (Deadline) Search:** Searches in reverse from a strict deadline $Y$ to find the *latest* possible $N$ consecutive free days.
+3. **Multi-User Overlap:** Combines the busy maps and blackout days of User A and User B to find the strict intersection of their free time.
+4. **Holiday Mapping:** It maps out public holidays via the `holidays` Python package.
+5. **Sliding Window Validation:** A sliding window of size $N$ traverses the allowed timeline. Windows that overlap with a blackout day are instantly moved forward, preventing unnecessary checks. 
+6. **Shared Event Linking:** Valid overlapping slots between users in the same organization generate twin Event documents tied by a `parent_event_id`, ensuring synchronized deletions.
 
 ---
 
