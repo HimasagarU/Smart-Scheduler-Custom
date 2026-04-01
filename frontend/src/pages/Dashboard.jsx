@@ -38,14 +38,14 @@ export default function Dashboard() {
     } catch (err) {
       if (err.response?.status === 401) {
         localStorage.removeItem('token');
-        navigate('/login');
+        window.location.href = '/login';
       }
     }
   };
 
   const logout = () => {
     localStorage.removeItem('token');
-    navigate('/login');
+    window.location.href = '/login';
   };
 
   const handleFindSlots = async (reqData) => {

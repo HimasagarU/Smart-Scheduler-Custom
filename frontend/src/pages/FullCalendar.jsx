@@ -26,7 +26,7 @@ export default function FullCalendar() {
     } catch (err) {
       if (err.response?.status === 401) {
         localStorage.removeItem('token');
-        navigate('/login');
+        window.location.href = '/login';
       }
     }
   };

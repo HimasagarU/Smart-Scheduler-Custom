@@ -18,6 +18,7 @@ class DeadlineRequest(BaseModel):
     n_days: int
     deadline: str  # "YYYY-MM-DD"
     blackout_days: List[str]
+    prefer_days: List[str] = []
     holiday_pref: str = "avoid"
 
 class OverlapRequest(BaseModel):
@@ -26,6 +27,7 @@ class OverlapRequest(BaseModel):
     year: int
     other_user_id: str
     blackout_days: List[str]
+    prefer_days: List[str] = []
     holiday_pref: str = "avoid"
 
 @router.post("/find")
@@ -50,6 +52,7 @@ async def deadline_slots(req: DeadlineRequest, current_user: dict = Depends(get_
         req.n_days,
         req.deadline,
         blackout,
+        req.prefer_days,
         req.holiday_pref
     )
     return result
@@ -64,6 +67,7 @@ async def overlap_slots(req: OverlapRequest, current_user: dict = Depends(get_cu
         req.month,
         req.year,
         blackout,
+        req.prefer_days,
         req.holiday_pref
     )
     return result

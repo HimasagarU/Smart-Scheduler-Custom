@@ -5,7 +5,7 @@ from app.api.auth import get_current_user
 from app.db.models import EventCreate, Event
 import uuid
 from app.db.mongodb import get_database
-from app.services.reminder_service import schedule_reminder, unschedule_reminder
+from app.services.reminder_service import schedule_reminder, unschedule_reminder, send_cancellation_email, send_organizer_cancellation_email
 import holidays
 
 router = APIRouter()
@@ -112,10 +112,10 @@ async def list_events(current_user: dict = Depends(get_current_user)):
         ev["_id"] = str(ev["_id"])
     return events
 
-from fastapi import Query
+from fastapi import Query, BackgroundTasks
 
 @router.delete("/{event_id}", status_code=status.HTTP_200_OK)
-async def delete_event(event_id: str, scope: str = Query("me", regex="^(me|all)$"), current_user: dict = Depends(get_current_user)):
+async def delete_event(event_id: str, background_tasks: BackgroundTasks, scope: str = Query("me", regex="^(me|all)$"), current_user: dict = Depends(get_current_user)):
     db = get_database()
     try:
         obj_id = ObjectId(event_id)
@@ -136,11 +136,39 @@ async def delete_event(event_id: str, scope: str = Query("me", regex="^(me|all)$
         
         for e in linked_events:
             unschedule_reminder(str(e["_id"]))
+            if str(e["user_id"]) != str(current_user["_id"]):
+                try:
+                    other_user = await db["users"].find_one({"_id": ObjectId(e["user_id"])})
+                    if other_user and other_user.get("email"):
+                        background_tasks.add_task(
+                            send_organizer_cancellation_email,
+                            to_email=other_user["email"],
+                            event_title=event.get("title", "Unknown Event"),
+                            canceled_by_name=current_user.get("name", "The Organizer")
+                        )
+                except Exception as ex:
+                    print("Failed to dispatch organizer cancellation email:", ex)
             
         await db["events"].delete_many({"parent_event_id": event["parent_event_id"]})
         return {"message": "Shared event canceled for everyone"}
         
     else:
+        # Check if the invitee is deleting a shared event, if so, alert the organizer
+        if event.get("parent_event_id") and not event.get("is_organizer"):
+            org_event = await db["events"].find_one({"parent_event_id": event["parent_event_id"], "is_organizer": True})
+            if org_event:
+                try:
+                    org_user = await db["users"].find_one({"_id": ObjectId(org_event["user_id"])})
+                    if org_user and org_user.get("email"):
+                        background_tasks.add_task(
+                            send_cancellation_email,
+                            to_email=org_user["email"],
+                            event_title=event.get("title", "Unknown Event"),
+                            canceled_by_name=current_user.get("name", "An Invitee")
+                        )
+                except Exception as e:
+                    print("Failed to dispatch cancellation email:", e)
+                    
         # Delete just this one
         await db["events"].delete_one({"_id": obj_id})
         unschedule_reminder(event_id)

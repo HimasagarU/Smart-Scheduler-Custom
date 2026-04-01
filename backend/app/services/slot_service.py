@@ -105,7 +105,7 @@ async def find_free_slots(user_id: str, n_days: int, month: int, year: int,
 
 
 async def find_deadline_slots(user_id: str, n_days: int, deadline: str,
-                               avoid_days: list[str], holiday_pref: str = "avoid") -> dict:
+                               avoid_days: list[str], prefer_days: list[str] = None, holiday_pref: str = "avoid") -> dict:
     """Find the latest possible n-day window that ends on or before the deadline."""
     db = get_database()
     deadline_date = date.fromisoformat(deadline)
@@ -119,12 +119,14 @@ async def find_deadline_slots(user_id: str, n_days: int, deadline: str,
         "Friday": 4, "Saturday": 5, "Sunday": 6
     }
     avoid_ints = [weekday_map.get(day) for day in avoid_days if day in weekday_map]
+    prefer_days = prefer_days or []
+    prefer_ints = [weekday_map.get(day) for day in prefer_days if day in weekday_map]
     in_holidays = holidays.India(years=[deadline_date.year, today.year])
     
-    # Build list of all candidate days from tomorrow to deadline
+    # Build list of all candidate days from tomorrow up to the day before deadline
     all_days = []
     current = today + timedelta(days=1)
-    while current <= deadline_date:
+    while current < deadline_date:
         all_days.append(current)
         current += timedelta(days=1)
     
@@ -162,20 +164,30 @@ async def find_deadline_slots(user_id: str, n_days: int, deadline: str,
                 is_valid = False
                 break
         if is_valid:
+            score = 0
+            for d in window:
+                if holiday_pref == "prefer" and d in in_holidays:
+                    score += 1
+                if d.weekday() in prefer_ints:
+                    score += 1
+            
             valid_slots.append({
                 "start_date": window[0].isoformat(),
-                "end_date": window[-1].isoformat()
+                "end_date": window[-1].isoformat(),
+                "score": score
             })
-        if len(valid_slots) >= 3:
-            break
-    
-    msg = "Found slots (latest first, before deadline)" if valid_slots else "No free window before deadline"
-    return {"slots": valid_slots, "message": msg}
+            
+    if valid_slots:
+        valid_slots.sort(key=lambda x: x["score"], reverse=True)
+        valid_slots = valid_slots[:3]
+        
+    msg = "Found slots (best matched first, before deadline)" if valid_slots else "No free window before deadline"
+    return {"slots": [{"start_date": s["start_date"], "end_date": s["end_date"]} for s in valid_slots], "message": msg}
 
 
 async def find_overlap_slots(user_id: str, other_user_id: str, n_days: int,
                               month: int, year: int, avoid_days: list[str],
-                              holiday_pref: str = "avoid") -> dict:
+                              prefer_days: list[str] = None, holiday_pref: str = "avoid") -> dict:
     """Find n consecutive days where both users are free."""
     db = get_database()
     
@@ -184,6 +196,8 @@ async def find_overlap_slots(user_id: str, other_user_id: str, n_days: int,
         "Friday": 4, "Saturday": 5, "Sunday": 6
     }
     avoid_ints = [weekday_map.get(day) for day in avoid_days if day in weekday_map]
+    prefer_days = prefer_days or []
+    prefer_ints = [weekday_map.get(day) for day in prefer_days if day in weekday_map]
     in_holidays = holidays.India(years=[year, year + 1])
     
     _, last_day = calendar.monthrange(year, month)
@@ -231,10 +245,22 @@ async def find_overlap_slots(user_id: str, other_user_id: str, n_days: int,
                 is_valid = False
                 break
         if is_valid:
+            score = 0
+            for d in window:
+                if holiday_pref == "prefer" and d in in_holidays:
+                    score += 1
+                if d.weekday() in prefer_ints:
+                    score += 1
+            
             valid_slots.append({
                 "start_date": window[0].isoformat(),
-                "end_date": window[-1].isoformat()
+                "end_date": window[-1].isoformat(),
+                "score": score
             })
     
+    if valid_slots:
+        valid_slots.sort(key=lambda x: x["score"], reverse=True)
+        valid_slots = valid_slots[:3]
+        
     msg = f"Found {len(valid_slots)} overlapping free slot(s)" if valid_slots else "No overlapping free slots found"
-    return {"slots": valid_slots[:3], "message": msg, "month": month, "year": year}
+    return {"slots": [{"start_date": s["start_date"], "end_date": s["end_date"]} for s in valid_slots], "message": msg, "month": month, "year": year}

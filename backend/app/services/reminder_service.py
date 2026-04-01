@@ -45,6 +45,68 @@ def send_email(to_email: str, title: str, start_date: str):
     except Exception as e:
         print(f"Failed to send email to {to_email}: {e}")
 
+def send_cancellation_email(to_email: str, event_title: str, canceled_by_name: str):
+    if not settings.SMTP_EMAIL or not settings.SMTP_PASSWORD:
+        print(f"SMTP not configured. Skipping cancellation email to {to_email}")
+        return
+        
+    msg = EmailMessage()
+    msg['Subject'] = f"Notice: Participant Canceled '{event_title}'"
+    msg['From'] = settings.SMTP_EMAIL
+    msg['To'] = to_email
+    
+    msg.set_content(f"""
+    Hello,
+    
+    Just a heads up that your shared scheduler event has been updated.
+    
+    {canceled_by_name} has removed '{event_title}' from their calendar.
+    
+    The event remains on your calendar, but please be aware they are no longer attending.
+    
+    Best,
+    Smart Scheduler Team
+    """)
+    
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(settings.SMTP_EMAIL, settings.SMTP_PASSWORD)
+            smtp.send_message(msg)
+        print(f"Sent cancellation email to {to_email}")
+    except Exception as e:
+        print(f"Failed to send cancellation email to {to_email}: {e}")
+
+def send_organizer_cancellation_email(to_email: str, event_title: str, canceled_by_name: str):
+    if not settings.SMTP_EMAIL or not settings.SMTP_PASSWORD:
+        print(f"SMTP not configured. Skipping organizer cancellation email to {to_email}")
+        return
+        
+    msg = EmailMessage()
+    msg['Subject'] = f"Notice: Event Canceled '{event_title}'"
+    msg['From'] = settings.SMTP_EMAIL
+    msg['To'] = to_email
+    
+    msg.set_content(f"""
+    Hello,
+    
+    This is an automatic notification regarding your schedule.
+    
+    The Organizer ({canceled_by_name}) has canceled the shared event: '{event_title}'.
+    
+    This event has been automatically removed from your calendar, and any related reminders have been unscheduled.
+    
+    Best,
+    Smart Scheduler Team
+    """)
+    
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(settings.SMTP_EMAIL, settings.SMTP_PASSWORD)
+            smtp.send_message(msg)
+        print(f"Sent organizer cancellation email to {to_email}")
+    except Exception as e:
+        print(f"Failed to send organizer cancellation email to {to_email}: {e}")
+
 def schedule_reminder(user_email: str, event_title: str, start_date: str, job_id: str, lead_days: int = 1):
     start_dt = datetime.strptime(start_date, "%Y-%m-%d")
     trigger_time = start_dt - timedelta(days=lead_days)

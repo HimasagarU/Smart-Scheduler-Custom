@@ -28,10 +28,10 @@ export default function SlotForm({ onFindSlots, onDeadlineSearch, onOverlapSearc
     const [year, month] = monthStr.split('-').map(Number);
 
     if (mode === 'deadline') {
-      onDeadlineSearch({ n_days: parseInt(nDays), deadline, blackout_days: avoidDays, holiday_pref: holidayPref });
+      onDeadlineSearch({ n_days: parseInt(nDays), deadline, blackout_days: avoidDays, prefer_days: preferDays, holiday_pref: holidayPref });
     } else if (mode === 'overlap') {
       if (!selectedUser) return alert('Please select a user to find overlap with');
-      onOverlapSearch({ n_days: parseInt(nDays), month, year, other_user_id: selectedUser.id, blackout_days: avoidDays, holiday_pref: holidayPref });
+      onOverlapSearch({ n_days: parseInt(nDays), month, year, other_user_id: selectedUser.id, blackout_days: avoidDays, prefer_days: preferDays, holiday_pref: holidayPref });
     } else {
       onFindSlots({ n_days: parseInt(nDays), month, year, blackout_days: avoidDays, prefer_days: preferDays, holiday_pref: holidayPref });
     }
@@ -186,32 +186,29 @@ export default function SlotForm({ onFindSlots, onDeadlineSearch, onOverlapSearc
           </div>
         </div>
 
-        {/* Prefer days only in normal mode */}
-        {mode === 'normal' && (
-          <div className="form-group">
-            <label>Prefer Days</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
-              {DAYS.map(day => (
-                <button
-                  type="button"
-                  key={`prefer-${day}`}
-                  onClick={() => handleDayToggle(day, 'prefer')}
-                  style={{
-                    padding: '0.25rem 0.75rem',
-                    borderRadius: '1rem',
-                    border: `1px solid ${preferDays.includes(day) ? '#10b981' : 'var(--border)'}`,
-                    background: preferDays.includes(day) ? '#10b981' : 'transparent',
-                    color: preferDays.includes(day) ? 'white' : 'var(--text-muted)',
-                    cursor: 'pointer',
-                    fontSize: '0.75rem'
-                  }}
-                >
-                  {day.substring(0, 3)}
-                </button>
-              ))}
-            </div>
+        <div className="form-group">
+          <label>Prefer Days</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
+            {DAYS.map(day => (
+              <button
+                type="button"
+                key={`prefer-${day}`}
+                onClick={() => handleDayToggle(day, 'prefer')}
+                style={{
+                  padding: '0.25rem 0.75rem',
+                  borderRadius: '1rem',
+                  border: `1px solid ${preferDays.includes(day) ? '#10b981' : 'var(--border)'}`,
+                  background: preferDays.includes(day) ? '#10b981' : 'transparent',
+                  color: preferDays.includes(day) ? 'white' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem'
+                }}
+              >
+                {day.substring(0, 3)}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
 
         <button type="submit" className="btn">
           {mode === 'normal' ? 'Find Free Slots' : mode === 'deadline' ? 'Find Before Deadline' : 'Find Overlap'}
