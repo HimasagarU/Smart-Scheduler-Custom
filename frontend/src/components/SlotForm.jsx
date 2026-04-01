@@ -7,7 +7,7 @@ export default function SlotForm({ onFindSlots }) {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
-  const [avoidDays, setAvoidDays] = useState(['Saturday', 'Sunday']);
+  const [avoidDays, setAvoidDays] = useState(['Sunday']);
   const [preferDays, setPreferDays] = useState([]);
   const [holidayPref, setHolidayPref] = useState('avoid');
   
@@ -45,7 +45,6 @@ export default function SlotForm({ onFindSlots }) {
         <label><Filter size={16} style={{ verticalAlign: 'middle', marginRight: '4px' }}/> Public Holidays</label>
         <select className="form-control" value={holidayPref} onChange={e => setHolidayPref(e.target.value)}>
           <option value="avoid">Avoid Holidays</option>
-          <option value="ignore">Ignore Holidays</option>
           <option value="prefer">Prefer Holidays</option>
         </select>
       </div>

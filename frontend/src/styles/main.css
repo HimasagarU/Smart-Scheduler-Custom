@@ -276,6 +276,10 @@ body {
   color: inherit !important;
 }
 
+.sunday-tile {
+  background-color: #ffe4e6 !important; /* light rose */
+}
+
 .gc-event-container {
   width: 100%;
   display: flex;
@@ -290,7 +294,6 @@ body {
 }
 
 .gc-event-pill {
-  background-color: var(--primary);
   color: white;
   width: 100%;
   font-size: 0.70rem;
@@ -302,6 +305,10 @@ body {
   text-overflow: ellipsis;
   cursor: pointer;
   box-sizing: border-box;
+}
+
+.gc-event-pill:not([style*="background-color"]) {
+  background-color: var(--primary); /* fallback */
 }
 
 .gc-event-pill:hover {

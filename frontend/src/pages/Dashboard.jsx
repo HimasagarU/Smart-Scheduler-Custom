@@ -15,6 +15,9 @@ export default function Dashboard() {
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [eventFormData, setEventFormData] = useState({ title: '', description: '' });
   
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newEventData, setNewEventData] = useState({ title: '', description: '', start_date: '', end_date: '' });
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -82,11 +85,33 @@ export default function Dashboard() {
     }
   };
 
+  const handleCreateNewClick = () => {
+    const today = new Date();
+    const d = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    setNewEventData({ title: '', description: '', start_date: d, end_date: d });
+    setShowAddModal(true);
+  };
+
+  const handleAddSubmit = async (e) => {
+    e.preventDefault();
+    if (!newEventData.title || !newEventData.start_date || !newEventData.end_date) return;
+
+    try {
+      await api.post('/events/confirm', newEventData);
+      alert("Custom event created!");
+      setShowAddModal(false);
+      fetchUserAndEvents();
+    } catch (err) {
+      alert("Failed to create event");
+    }
+  };
+
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
         <h2 style={{ margin: 0, fontWeight: 600 }}>Smart Scheduler</h2>
         <div>
+          <button onClick={handleCreateNewClick} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', marginRight: '0.5rem' }}>+ Add Event</button>
           <span style={{ marginRight: '1rem', color: 'var(--text-muted)' }}>{user?.name}</span>
           <button onClick={() => navigate('/calendar')} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', marginRight: '0.5rem' }}>Full Calendar</button>
           <button onClick={logout} style={{ background: 'transparent', border: '1px solid var(--border)', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer' }}>Logout</button>
@@ -129,6 +154,38 @@ export default function Dashboard() {
               <div style={{display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem'}}>
                 <button type="button" onClick={() => setShowConfirmModal(false)} style={{padding: '0.5rem 1rem', background: 'transparent', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text)'}}>Cancel</button>
                 <button type="submit" className="btn" style={{margin: 0}}>Confirm Slot</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showAddModal && (
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000}}>
+          <div className="modal-content" style={{ backgroundColor: 'var(--card)', padding: '2rem', borderRadius: '8px', width: '400px', maxWidth: '90%' }}>
+            <h3 style={{marginTop: 0}}>Add Custom Event</h3>
+            <form onSubmit={handleAddSubmit} style={{marginTop: '1rem'}}>
+              <div className="form-group" style={{marginBottom: '1rem'}}>
+                <label style={{display: 'block', marginBottom: '0.5rem', textAlign: 'left', fontSize: '1.1rem', color: 'var(--primary)', fontWeight: 'bold'}}>Event Title</label>
+                <input type="text" className="form-control" style={{width: '100%', boxSizing: 'border-box', fontSize: '1.1rem', color: 'var(--text)', backgroundColor: 'transparent'}} value={newEventData.title} onChange={e => setNewEventData({...newEventData, title: e.target.value})} required />
+              </div>
+              <div style={{display: 'flex', gap: '1rem', marginBottom: '1rem'}}>
+                <div style={{flex: 1}}>
+                  <label style={{display: 'block', marginBottom: '0.5rem', textAlign: 'left', fontSize: '1.1rem', color: 'var(--primary)', fontWeight: 'bold'}}>Start Date</label>
+                  <input type="date" className="form-control" style={{width: '100%', boxSizing: 'border-box', fontSize: '1.1rem', color: 'var(--text)', backgroundColor: 'transparent'}} value={newEventData.start_date} onChange={e => setNewEventData({...newEventData, start_date: e.target.value})} required />
+                </div>
+                <div style={{flex: 1}}>
+                  <label style={{display: 'block', marginBottom: '0.5rem', textAlign: 'left', fontSize: '1.1rem', color: 'var(--primary)', fontWeight: 'bold'}}>End Date</label>
+                  <input type="date" className="form-control" style={{width: '100%', boxSizing: 'border-box', fontSize: '1.1rem', color: 'var(--text)', backgroundColor: 'transparent'}} value={newEventData.end_date} onChange={e => setNewEventData({...newEventData, end_date: e.target.value})} required />
+                </div>
+              </div>
+              <div className="form-group" style={{marginBottom: '1rem'}}>
+                <label style={{display: 'block', marginBottom: '0.5rem', textAlign: 'left', fontSize: '1.1rem', color: 'var(--primary)', fontWeight: 'bold'}}>Description (Optional)</label>
+                <textarea className="form-control" style={{width: '100%', boxSizing: 'border-box', minHeight: '80px', fontSize: '1.1rem', color: 'var(--text)', backgroundColor: 'transparent'}} value={newEventData.description} onChange={e => setNewEventData({...newEventData, description: e.target.value})} />
+              </div>
+              <div style={{display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem'}}>
+                <button type="button" onClick={() => setShowAddModal(false)} style={{padding: '0.5rem 1rem', background: 'transparent', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text)'}}>Cancel</button>
+                <button type="submit" className="btn" style={{margin: 0}}>Create Event</button>
               </div>
             </form>
           </div>
