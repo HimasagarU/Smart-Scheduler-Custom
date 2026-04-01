@@ -102,3 +102,139 @@ async def find_free_slots(user_id: str, n_days: int, month: int, year: int,
             }
             
     return {"slots": [], "message": "No slots found in the next 3 months", "month": month, "year": year}
+
+
+async def find_deadline_slots(user_id: str, n_days: int, deadline: str,
+                               avoid_days: list[str], holiday_pref: str = "avoid") -> dict:
+    """Find the latest possible n-day window that ends on or before the deadline."""
+    db = get_database()
+    deadline_date = date.fromisoformat(deadline)
+    today = date.today()
+    
+    if deadline_date <= today:
+        return {"slots": [], "message": "Deadline must be in the future"}
+    
+    weekday_map = {
+        "Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3,
+        "Friday": 4, "Saturday": 5, "Sunday": 6
+    }
+    avoid_ints = [weekday_map.get(day) for day in avoid_days if day in weekday_map]
+    in_holidays = holidays.India(years=[deadline_date.year, today.year])
+    
+    # Build list of all candidate days from tomorrow to deadline
+    all_days = []
+    current = today + timedelta(days=1)
+    while current <= deadline_date:
+        all_days.append(current)
+        current += timedelta(days=1)
+    
+    if len(all_days) < n_days:
+        return {"slots": [], "message": "Not enough days between now and deadline"}
+    
+    # Get busy days from existing events
+    start_str = all_days[0].isoformat()
+    end_str = deadline_date.isoformat()
+    events_cursor = db["events"].find({
+        "user_id": user_id,
+        "$or": [{"start_date": {"$lte": end_str}, "end_date": {"$gte": start_str}}]
+    })
+    events = await events_cursor.to_list(length=None)
+    
+    busy_days = set()
+    for ev in events:
+        e_start = date.fromisoformat(ev["start_date"])
+        e_end = date.fromisoformat(ev["end_date"])
+        d = e_start
+        while d <= e_end:
+            busy_days.add(d)
+            d += timedelta(days=1)
+    
+    # Search backward from deadline
+    valid_slots = []
+    for i in range(len(all_days) - n_days, -1, -1):
+        window = all_days[i:i + n_days]
+        is_valid = True
+        for d in window:
+            if d in busy_days or d.weekday() in avoid_ints:
+                is_valid = False
+                break
+            if holiday_pref == "avoid" and d in in_holidays:
+                is_valid = False
+                break
+        if is_valid:
+            valid_slots.append({
+                "start_date": window[0].isoformat(),
+                "end_date": window[-1].isoformat()
+            })
+        if len(valid_slots) >= 3:
+            break
+    
+    msg = "Found slots (latest first, before deadline)" if valid_slots else "No free window before deadline"
+    return {"slots": valid_slots, "message": msg}
+
+
+async def find_overlap_slots(user_id: str, other_user_id: str, n_days: int,
+                              month: int, year: int, avoid_days: list[str],
+                              holiday_pref: str = "avoid") -> dict:
+    """Find n consecutive days where both users are free."""
+    db = get_database()
+    
+    weekday_map = {
+        "Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3,
+        "Friday": 4, "Saturday": 5, "Sunday": 6
+    }
+    avoid_ints = [weekday_map.get(day) for day in avoid_days if day in weekday_map]
+    in_holidays = holidays.India(years=[year, year + 1])
+    
+    _, last_day = calendar.monthrange(year, month)
+    today = date.today()
+    start_day = today.day + 1 if today.year == year and today.month == month else 1
+    start_day = max(1, start_day)
+    
+    if today.year > year or (today.year == year and today.month > month):
+        return {"slots": [], "message": "Month is in the past", "month": month, "year": year}
+    
+    all_days = [date(year, month, d) for d in range(start_day, last_day + 1)]
+    
+    if len(all_days) < n_days:
+        return {"slots": [], "message": "Not enough days left in this month", "month": month, "year": year}
+    
+    # Get busy days for BOTH users
+    start_str = f"{year}-{month:02d}-{start_day:02d}"
+    end_str = f"{year}-{month:02d}-{last_day:02d}"
+    
+    events_cursor = db["events"].find({
+        "user_id": {"$in": [user_id, other_user_id]},
+        "$or": [{"start_date": {"$lte": end_str}, "end_date": {"$gte": start_str}}]
+    })
+    events = await events_cursor.to_list(length=None)
+    
+    busy_days = set()
+    for ev in events:
+        e_start = date.fromisoformat(ev["start_date"])
+        e_end = date.fromisoformat(ev["end_date"])
+        d = e_start
+        while d <= e_end:
+            busy_days.add(d)
+            d += timedelta(days=1)
+    
+    # Find windows where neither user is busy
+    valid_slots = []
+    for i in range(len(all_days) - n_days + 1):
+        window = all_days[i:i + n_days]
+        is_valid = True
+        for d in window:
+            if d in busy_days or d.weekday() in avoid_ints:
+                is_valid = False
+                break
+            if holiday_pref == "avoid" and d in in_holidays:
+                is_valid = False
+                break
+        if is_valid:
+            valid_slots.append({
+                "start_date": window[0].isoformat(),
+                "end_date": window[-1].isoformat()
+            })
+    
+    msg = f"Found {len(valid_slots)} overlapping free slot(s)" if valid_slots else "No overlapping free slots found"
+    return {"slots": valid_slots[:3], "message": msg, "month": month, "year": year}

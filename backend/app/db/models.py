@@ -10,6 +10,7 @@ class User(BaseModel):
     name: str
     email: EmailStr
     password_hash: str
+    organization: str = Field(default="DefaultOrg")
     preferences: Preferences = Field(default_factory=Preferences)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -17,6 +18,7 @@ class UserCreate(BaseModel):
     name: str
     email: EmailStr
     password: str
+    organization: Optional[str] = "DefaultOrg"
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -26,6 +28,7 @@ class UserResponse(BaseModel):
     id: str
     name: str
     email: EmailStr
+    organization: str
     preferences: Preferences
     
 class Event(BaseModel):
@@ -34,6 +37,9 @@ class Event(BaseModel):
     description: Optional[str] = ""
     start_date: str # "YYYY-MM-DD"
     end_date: str   # "YYYY-MM-DD"
+    parent_event_id: Optional[str] = None
+    is_organizer: bool = Field(default=True)
+    shared_with: Optional[str] = None
     reminder_sent: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -42,6 +48,7 @@ class EventCreate(BaseModel):
     description: Optional[str] = ""
     start_date: str
     end_date: str
+    other_user_id: Optional[str] = None
 
 class Token(BaseModel):
     access_token: str

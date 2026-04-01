@@ -10,6 +10,7 @@ export default function Dashboard() {
   const [events, setEvents] = useState([]);
   const [results, setResults] = useState(null);
   const [activeDate, setActiveDate] = useState(new Date());
+  const [pendingOverlapUserId, setPendingOverlapUserId] = useState(null);
   
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
@@ -49,6 +50,7 @@ export default function Dashboard() {
 
   const handleFindSlots = async (reqData) => {
     try {
+      setPendingOverlapUserId(null);
       const res = await api.post('/slots/find', reqData);
       setResults(res.data);
       if (res.data.year && res.data.month) {
@@ -58,6 +60,30 @@ export default function Dashboard() {
       alert("Failed to find slots");
     }
   };
+
+  const handleDeadlineSearch = async (reqData) => {
+    try {
+      setPendingOverlapUserId(null);
+      const res = await api.post('/slots/deadline', reqData);
+      setResults(res.data);
+    } catch (err) {
+      alert("Failed to find deadline slots");
+    }
+  };
+
+  const handleOverlapSearch = async (reqData) => {
+    try {
+      setPendingOverlapUserId(reqData.other_user_id);
+      const res = await api.post('/slots/overlap', reqData);
+      setResults(res.data);
+      if (res.data.year && res.data.month) {
+        setActiveDate(new Date(res.data.year, res.data.month - 1, 1));
+      }
+    } catch (err) {
+      alert("Failed to find overlapping slots");
+    }
+  };
+
 
   const handleConfirmSlotClick = (slot) => {
     setSelectedSlot(slot);
@@ -70,13 +96,14 @@ export default function Dashboard() {
     if (!eventFormData.title) return;
 
     try {
-      await api.post('/events/confirm', {
+      const res = await api.post('/events/confirm', {
         title: eventFormData.title,
         description: eventFormData.description,
         start_date: selectedSlot.start_date,
-        end_date: selectedSlot.end_date
+        end_date: selectedSlot.end_date,
+        other_user_id: pendingOverlapUserId
       });
-      alert("Event confirmed and reminder scheduled!");
+      alert(res.data.message);
       setResults(null);
       setShowConfirmModal(false);
       fetchUserAndEvents();
@@ -110,27 +137,51 @@ export default function Dashboard() {
     <div className="dashboard-container">
       <div className="dashboard-header">
         <h2 style={{ margin: 0, fontWeight: 600 }}>Smart Scheduler</h2>
-        <div>
-          <button onClick={handleCreateNewClick} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', marginRight: '0.5rem' }}>+ Add Event</button>
-          <span style={{ marginRight: '1rem', color: 'var(--text-muted)' }}>{user?.name}</span>
-          <button onClick={() => navigate('/calendar')} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', marginRight: '0.5rem' }}>Full Calendar</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button onClick={handleCreateNewClick} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer' }}>+ Add Event</button>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '1rem' }}>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{user?.name}</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--primary)', background: '#eff6ff', padding: '0.1rem 0.5rem', borderRadius: '1rem' }}>{user?.organization}</span>
+          </div>
+
+          <button onClick={() => navigate('/calendar')} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer' }}>Full Calendar</button>
           <button onClick={logout} style={{ background: 'transparent', border: '1px solid var(--border)', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer' }}>Logout</button>
         </div>
       </div>
 
       <div className="dashboard-content">
-        <div className="panel">
-          <h3>Calendar View</h3>
-          <CalendarView 
-            events={events} 
-            activeMonthDate={activeDate}
-            onActiveStartDateChange={({ activeStartDate }) => setActiveDate(activeStartDate)}
-          />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div className="panel">
+            <h3>Calendar View</h3>
+            <CalendarView 
+              events={events} 
+              activeMonthDate={activeDate}
+              onActiveStartDateChange={({ activeStartDate }) => setActiveDate(activeStartDate)}
+            />
+            <div style={{ marginTop: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--text)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#10b981', borderRadius: '3px' }}></span>
+                <span>Green color ones are public holidays</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <span style={{ display: 'inline-block', width: '12px', height: '12px', background: 'linear-gradient(45deg, #8b5cf6, #ec4899)', borderRadius: '3px' }}></span>
+                <span>Different colored ones are different events</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#fef08a', border: '1px solid #eab308', borderRadius: '3px' }}></span>
+                <span>Yellow square is today</span>
+              </div>
+              <div style={{ marginTop: '0.5rem', color: 'var(--text-muted)' }}>
+                <em>For more details check full calendar</em>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="panel">
           <h3>Schedule an Event</h3>
-          <SlotForm onFindSlots={handleFindSlots} />
+          <SlotForm onFindSlots={handleFindSlots} onDeadlineSearch={handleDeadlineSearch} onOverlapSearch={handleOverlapSearch} />
           <SlotResults results={results} onConfirm={handleConfirmSlotClick} />
         </div>
       </div>

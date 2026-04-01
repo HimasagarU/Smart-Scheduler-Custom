@@ -31,14 +31,13 @@ export default function FullCalendar() {
     }
   };
 
-  const handleDeleteEvent = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this event?")) return;
+  const handleDeleteEvent = async (id, scope = 'me') => {
     try {
-      await api.delete(`/events/${id}`);
+      await api.delete(`/events/${id}?scope=${scope}`);
       setSelectedEvent(null);
       fetchEvents();
     } catch (err) {
-      alert("Failed to delete event.");
+      alert(err.response?.data?.detail || "Failed to delete event.");
     }
   };
 
@@ -100,7 +99,7 @@ export default function FullCalendar() {
               onClick={(ev) => { ev.stopPropagation(); setSelectedEvent(e); }}
               title={e.title}
             >
-              {e.title}
+              {e.title} {e.shared_with && '👥'}
             </div>
           ))}
         </div>
@@ -136,6 +135,11 @@ export default function FullCalendar() {
             <p style={{fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem', fontWeight: '500'}}>
               {selectedEvent.start_date} to {selectedEvent.end_date}
             </p>
+            {selectedEvent.shared_with && (
+              <p style={{fontSize: '0.9rem', color: 'var(--primary)', fontWeight: 'bold', marginBottom: '1rem'}}>
+                👥 Shared with: {selectedEvent.shared_with} {selectedEvent.is_organizer ? '(You are the organizer)' : ''}
+              </p>
+            )}
             {selectedEvent.description && (
               <div style={{ marginBottom: '1.5rem', whiteSpace: 'pre-wrap', background: 'transparent', padding: '0', fontSize: '1.1rem', color: 'var(--text)' }}>
                 {selectedEvent.description}
@@ -144,7 +148,12 @@ export default function FullCalendar() {
             <div style={{display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem'}}>
               <button onClick={() => setSelectedEvent(null)} style={{padding: '0.5rem 1rem', background: 'transparent', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text)'}}>Close</button>
               {!selectedEvent.is_holiday && (
-                <button onClick={() => handleDeleteEvent(selectedEvent._id)} style={{padding: '0.5rem 1rem', background: '#e11d48', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer'}}>Delete Event</button>
+                <div style={{display: 'flex', gap: '0.5rem'}}>
+                  {selectedEvent.shared_with && selectedEvent.is_organizer && (
+                     <button onClick={() => { if(window.confirm("Cancel this event for everyone?")) handleDeleteEvent(selectedEvent._id, 'all') }} style={{padding: '0.5rem 1rem', background: '#dc2626', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontWeight: 'bold'}}>Cancel for everyone</button>
+                  )}
+                  <button onClick={() => { if(window.confirm("Remove from your calendar?")) handleDeleteEvent(selectedEvent._id, 'me') }} style={{padding: '0.5rem 1rem', background: '#ef4444', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer'}}>Remove from my calendar</button>
+                </div>
               )}
             </div>
           </div>

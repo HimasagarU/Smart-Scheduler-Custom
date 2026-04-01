@@ -6,13 +6,14 @@ export default function Signup() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [organization, setOrganization] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleSignup = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.post('/auth/signup', { name, email, password });
+      const res = await api.post('/auth/signup', { name, email, password, organization: organization || 'DefaultOrg' });
       localStorage.setItem('token', res.data.access_token);
       window.location.href = '/dashboard';
     } catch (err) {
@@ -37,6 +38,10 @@ export default function Signup() {
           <div className="form-group">
             <label>Password</label>
             <input type="password" className="form-control" value={password} onChange={e => setPassword(e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label>Organization (Optional)</label>
+            <input type="text" className="form-control" value={organization} onChange={e => setOrganization(e.target.value)} placeholder="e.g. MyCompany" />
           </div>
           <button type="submit" className="btn">Sign Up</button>
         </form>
