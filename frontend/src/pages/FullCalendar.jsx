@@ -7,6 +7,8 @@ import 'react-calendar/dist/Calendar.css';
 export default function FullCalendar() {
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFormData, setEditFormData] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newEventData, setNewEventData] = useState({ title: '', description: '', start_date: '', end_date: '' });
   const navigate = useNavigate();
@@ -35,9 +37,22 @@ export default function FullCalendar() {
     try {
       await api.delete(`/events/${id}?scope=${scope}`);
       setSelectedEvent(null);
+      setIsEditing(false);
       fetchEvents();
     } catch (err) {
       alert(err.response?.data?.detail || "Failed to delete event.");
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.put(`/events/${editFormData._id}`, editFormData);
+      setSelectedEvent(null);
+      setIsEditing(false);
+      fetchEvents();
+    } catch (err) {
+      alert(err.response?.data?.detail || "Failed to update event.");
     }
   };
 
@@ -131,31 +146,64 @@ export default function FullCalendar() {
       {selectedEvent && (
         <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000}}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ backgroundColor: 'var(--card)', padding: '2rem', borderRadius: '8px', width: '400px', maxWidth: '90%', textAlign: 'left' }}>
-            <h3 style={{marginTop: 0, marginBottom: '0.5rem', wordBreak: 'break-word', fontSize: '1.5rem', color: 'var(--primary)'}}>{selectedEvent.title}</h3>
-            <p style={{fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem', fontWeight: '500'}}>
-              {selectedEvent.start_date} to {selectedEvent.end_date}
-            </p>
-            {selectedEvent.shared_with && (
-              <p style={{fontSize: '0.9rem', color: 'var(--primary)', fontWeight: 'bold', marginBottom: '1rem'}}>
-                👥 Shared with: {selectedEvent.shared_with} {selectedEvent.is_organizer ? '(You are the organizer)' : ''}
-              </p>
-            )}
-            {selectedEvent.description && (
-              <div style={{ marginBottom: '1.5rem', whiteSpace: 'pre-wrap', background: 'transparent', padding: '0', fontSize: '1.1rem', color: 'var(--text)' }}>
-                {selectedEvent.description}
-              </div>
-            )}
-            <div style={{display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem'}}>
-              <button onClick={() => setSelectedEvent(null)} style={{padding: '0.5rem 1rem', background: 'transparent', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text)'}}>Close</button>
-              {!selectedEvent.is_holiday && (
-                <div style={{display: 'flex', gap: '0.5rem'}}>
-                  {selectedEvent.shared_with && selectedEvent.is_organizer && (
-                     <button onClick={() => { if(window.confirm("Cancel this event for everyone?")) handleDeleteEvent(selectedEvent._id, 'all') }} style={{padding: '0.5rem 1rem', background: '#dc2626', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontWeight: 'bold'}}>Cancel for everyone</button>
-                  )}
-                  <button onClick={() => { if(window.confirm("Remove from your calendar?")) handleDeleteEvent(selectedEvent._id, 'me') }} style={{padding: '0.5rem 1rem', background: '#ef4444', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer'}}>Remove from my calendar</button>
+            {isEditing ? (
+              <form onSubmit={handleEditSubmit}>
+                <h3 style={{marginTop: 0, marginBottom: '1rem', color: 'var(--primary)'}}>Edit Event</h3>
+                <div className="form-group" style={{marginBottom: '1rem'}}>
+                  <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: 'bold'}}>Event Title</label>
+                  <input type="text" className="form-control" style={{width: '100%', boxSizing: 'border-box'}} value={editFormData.title} onChange={e => setEditFormData({...editFormData, title: e.target.value})} required />
                 </div>
-              )}
-            </div>
+                <div style={{display: 'flex', gap: '1rem', marginBottom: '1rem'}}>
+                  <div style={{flex: 1}}>
+                    <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: 'bold'}}>Start Date</label>
+                    <input type="date" className="form-control" style={{width: '100%', boxSizing: 'border-box'}} value={editFormData.start_date} onChange={e => setEditFormData({...editFormData, start_date: e.target.value})} required />
+                  </div>
+                  <div style={{flex: 1}}>
+                    <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: 'bold'}}>End Date</label>
+                    <input type="date" className="form-control" style={{width: '100%', boxSizing: 'border-box'}} value={editFormData.end_date} onChange={e => setEditFormData({...editFormData, end_date: e.target.value})} required />
+                  </div>
+                </div>
+                <div className="form-group" style={{marginBottom: '1rem'}}>
+                  <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: 'bold'}}>Description</label>
+                  <textarea className="form-control" style={{width: '100%', boxSizing: 'border-box', minHeight: '80px'}} value={editFormData.description} onChange={e => setEditFormData({...editFormData, description: e.target.value})} />
+                </div>
+                <div style={{display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem'}}>
+                  <button type="button" onClick={() => setIsEditing(false)} style={{padding: '0.5rem 1rem', background: 'transparent', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text)'}}>Cancel</button>
+                  <button type="submit" className="btn" style={{margin: 0}}>Save Changes</button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <h3 style={{marginTop: 0, marginBottom: '0.5rem', wordBreak: 'break-word', fontSize: '1.5rem', color: 'var(--primary)'}}>{selectedEvent.title}</h3>
+                <p style={{fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem', fontWeight: '500'}}>
+                  {selectedEvent.start_date} to {selectedEvent.end_date}
+                </p>
+                {selectedEvent.shared_with && (
+                  <p style={{fontSize: '0.9rem', color: 'var(--primary)', fontWeight: 'bold', marginBottom: '1rem'}}>
+                    👥 Shared with: {selectedEvent.shared_with} {selectedEvent.is_organizer ? '(You are the organizer)' : ''}
+                  </p>
+                )}
+                {selectedEvent.description && (
+                  <div style={{ marginBottom: '1.5rem', whiteSpace: 'pre-wrap', background: 'transparent', padding: '0', fontSize: '1.1rem', color: 'var(--text)' }}>
+                    {selectedEvent.description}
+                  </div>
+                )}
+                <div style={{display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem'}}>
+                  <button onClick={() => { setSelectedEvent(null); setIsEditing(false); }} style={{padding: '0.5rem 1rem', background: 'transparent', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text)'}}>Close</button>
+                  {!selectedEvent.is_holiday && (
+                    <div style={{display: 'flex', gap: '0.5rem'}}>
+                      {(!selectedEvent.shared_with || selectedEvent.is_organizer) && (
+                        <button onClick={() => { setEditFormData(selectedEvent); setIsEditing(true); }} style={{padding: '0.5rem 1rem', background: 'var(--primary)', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontWeight: 'bold'}}>Edit</button>
+                      )}
+                      {selectedEvent.shared_with && selectedEvent.is_organizer && (
+                         <button onClick={() => { if(window.confirm("Cancel this event for everyone?")) handleDeleteEvent(selectedEvent._id, 'all') }} style={{padding: '0.5rem 1rem', background: '#dc2626', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontWeight: 'bold'}}>Cancel for everyone</button>
+                      )}
+                      <button onClick={() => { if(window.confirm("Remove from your calendar?")) handleDeleteEvent(selectedEvent._id, 'me') }} style={{padding: '0.5rem 1rem', background: '#ef4444', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer'}}>Remove from my calendar</button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

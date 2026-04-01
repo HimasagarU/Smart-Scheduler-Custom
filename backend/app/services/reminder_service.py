@@ -16,7 +16,7 @@ def shutdown_scheduler():
         scheduler.shutdown()
         print("Scheduler shutdown")
 
-def send_email(to_email: str, title: str, start_date: str):
+def send_email(to_email: str, title: str, start_date: str, description: str = ""):
     if not settings.SMTP_EMAIL or not settings.SMTP_PASSWORD:
         print(f"SMTP not configured. Skipping email to {to_email} for event {title}")
         return
@@ -26,12 +26,14 @@ def send_email(to_email: str, title: str, start_date: str):
     msg['From'] = settings.SMTP_EMAIL
     msg['To'] = to_email
     
+    desc_text = f"\n    Description: {description}" if description else ""
+    
     msg.set_content(f"""
     Hello!
     
     This is a friendly reminder for your upcoming event:
     Title: {title}
-    Start Date: {start_date}
+    Start Date: {start_date}{desc_text}
     
     Best,
     Smart Scheduler Team
@@ -107,7 +109,77 @@ def send_organizer_cancellation_email(to_email: str, event_title: str, canceled_
     except Exception as e:
         print(f"Failed to send organizer cancellation email to {to_email}: {e}")
 
-def schedule_reminder(user_email: str, event_title: str, start_date: str, job_id: str, lead_days: int = 1):
+def send_event_created_email(to_email: str, event_title: str, organizer_name: str, start_date: str, description: str = ""):
+    if not settings.SMTP_EMAIL or not settings.SMTP_PASSWORD:
+        print(f"SMTP not configured. Skipping event creation email to {to_email}")
+        return
+        
+    msg = EmailMessage()
+    msg['Subject'] = f"New Event Scheduled: '{event_title}'"
+    msg['From'] = settings.SMTP_EMAIL
+    msg['To'] = to_email
+    
+    desc_text = f"\n    Description: {description}" if description else ""
+    
+    msg.set_content(f"""
+    Hello,
+    
+    A new shared event has been scheduled with you.
+    
+    Organizer: {organizer_name}
+    Event Title: '{event_title}'
+    Date: {start_date}{desc_text}
+    
+    This has been automatically added to your Smart Scheduler calendar.
+    
+    Best,
+    Smart Scheduler Team
+    """)
+    
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(settings.SMTP_EMAIL, settings.SMTP_PASSWORD)
+            smtp.send_message(msg)
+        print(f"Sent event creation email to {to_email}")
+    except Exception as e:
+        print(f"Failed to send event creation email to {to_email}: {e}")
+
+def send_event_updated_email(to_email: str, event_title: str, organizer_name: str, new_start_date: str, new_end_date: str, description: str = ""):
+    if not settings.SMTP_EMAIL or not settings.SMTP_PASSWORD:
+        print(f"SMTP not configured. Skipping event update email to {to_email}")
+        return
+        
+    msg = EmailMessage()
+    msg['Subject'] = f"Event Updated: '{event_title}'"
+    msg['From'] = settings.SMTP_EMAIL
+    msg['To'] = to_email
+    
+    desc_text = f"\n    Description: {description}" if description else ""
+    
+    msg.set_content(f"""
+    Hello,
+    
+    A shared event you are participating in has been updated.
+    
+    Organizer: {organizer_name}
+    Event Title: '{event_title}'
+    New Dates: {new_start_date} to {new_end_date}{desc_text}
+    
+    Your Smart Scheduler calendar has been automatically updated with the new details.
+    
+    Best,
+    Smart Scheduler Team
+    """)
+    
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(settings.SMTP_EMAIL, settings.SMTP_PASSWORD)
+            smtp.send_message(msg)
+        print(f"Sent event update email to {to_email}")
+    except Exception as e:
+        print(f"Failed to send event update email to {to_email}: {e}")
+
+def schedule_reminder(user_email: str, event_title: str, start_date: str, job_id: str, lead_days: int = 1, description: str = ""):
     start_dt = datetime.strptime(start_date, "%Y-%m-%d")
     trigger_time = start_dt - timedelta(days=lead_days)
     
@@ -119,7 +191,7 @@ def schedule_reminder(user_email: str, event_title: str, start_date: str, job_id
         trigger='date',
         run_date=trigger_time,
         id=job_id,
-        kwargs={"to_email": user_email, "title": event_title, "start_date": start_date}
+        kwargs={"to_email": user_email, "title": event_title, "start_date": start_date, "description": description}
     )
     print(f"Scheduled reminder for '{event_title}' at {trigger_time} with job id '{job_id}'")
 
