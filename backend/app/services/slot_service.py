@@ -122,8 +122,7 @@ async def find_deadline_slots(user_id: str, n_days: int, deadline: str,
     prefer_days = prefer_days or []
     prefer_ints = [weekday_map.get(day) for day in prefer_days if day in weekday_map]
     in_holidays = holidays.India(years=[deadline_date.year, today.year])
-    
-    # Build list of all candidate days from tomorrow up to the day before deadline
+
     all_days = []
     current = today + timedelta(days=1)
     while current < deadline_date:
@@ -133,7 +132,6 @@ async def find_deadline_slots(user_id: str, n_days: int, deadline: str,
     if len(all_days) < n_days:
         return {"slots": [], "message": "Not enough days between now and deadline"}
     
-    # Get busy days from existing events
     start_str = all_days[0].isoformat()
     end_str = deadline_date.isoformat()
     events_cursor = db["events"].find({
@@ -213,7 +211,6 @@ async def find_overlap_slots(user_id: str, other_user_id: str, n_days: int,
     if len(all_days) < n_days:
         return {"slots": [], "message": "Not enough days left in this month", "month": month, "year": year}
     
-    # Get busy days for BOTH users
     start_str = f"{year}-{month:02d}-{start_day:02d}"
     end_str = f"{year}-{month:02d}-{last_day:02d}"
     
@@ -232,7 +229,6 @@ async def find_overlap_slots(user_id: str, other_user_id: str, n_days: int,
             busy_days.add(d)
             d += timedelta(days=1)
     
-    # Find windows where neither user is busy
     valid_slots = []
     for i in range(len(all_days) - n_days + 1):
         window = all_days[i:i + n_days]

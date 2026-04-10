@@ -1,0 +1,43 @@
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: smart_scheduler_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  backend:
+    build: 
+      context: ./backend
+    container_name: smart_scheduler_backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Use the docker container name for the mongo URI instead of localhost
+      - MONGO_URI=mongodb://mongodb:27017
+      - JWT_SECRET=super_secret_dev_key_12345
+      - JWT_EXPIRE_MINUTES=1440
+      # You can override these via a .env file or command line
+      - SMTP_EMAIL=your_email@gmail.com
+      - SMTP_PASSWORD=your_app_password
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      # Passing the API URL to Vite at build time
+      args:
+        - VITE_API_URL=http://localhost:8000
+    container_name: smart_scheduler_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  mongo_data:

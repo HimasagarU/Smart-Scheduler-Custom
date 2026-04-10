@@ -48,7 +48,6 @@ async def confirm_event(event_req: EventCreate, background_tasks: BackgroundTask
             
         parent_id = str(uuid.uuid4())
         
-        # Insert for User A (organizer)
         new_event_a = Event(
             user_id=str(current_user["_id"]),
             title=event_req.title,
@@ -63,7 +62,6 @@ async def confirm_event(event_req: EventCreate, background_tasks: BackgroundTask
         res_a = await db["events"].insert_one(dict_a)
         dict_a["_id"] = str(res_a.inserted_id)
         
-        # Insert for User B 
         new_event_b = Event(
             user_id=event_req.other_user_id,
             title=event_req.title,
@@ -76,7 +74,6 @@ async def confirm_event(event_req: EventCreate, background_tasks: BackgroundTask
         )
         res_b = await db["events"].insert_one(new_event_b.dict())
         
-        # Schedule reminders for both
         lead_days_a = current_user.get("preferences", {}).get("reminder_lead_days", 1)
         schedule_reminder(user_email=current_user["email"], event_title=event_req.title, start_date=event_req.start_date, job_id=str(res_a.inserted_id), lead_days=lead_days_a, description=event_req.description)
         
@@ -95,7 +92,7 @@ async def confirm_event(event_req: EventCreate, background_tasks: BackgroundTask
         return {"message": "Shared event created and automatically added to both calendars", "event": dict_a}
 
     else:
-        # Standard isolated event
+
         new_event = Event(
             user_id=str(current_user["_id"]),
             title=event_req.title,
@@ -121,8 +118,6 @@ async def list_events(current_user: dict = Depends(get_current_user)):
         ev["_id"] = str(ev["_id"])
     return events
 
-
-
 @router.delete("/{event_id}", status_code=status.HTTP_200_OK)
 async def delete_event(event_id: str, background_tasks: BackgroundTasks, scope: str = Query("me", regex="^(me|all)$"), current_user: dict = Depends(get_current_user)):
     db = get_database()
@@ -139,7 +134,6 @@ async def delete_event(event_id: str, background_tasks: BackgroundTasks, scope: 
         if not event.get("is_organizer"):
             raise HTTPException(status_code=403, detail="Only the organizer can delete this event for everyone")
             
-        # Delete all linked events
         cursor = db["events"].find({"parent_event_id": event["parent_event_id"]})
         linked_events = await cursor.to_list(length=None)
         
@@ -162,7 +156,6 @@ async def delete_event(event_id: str, background_tasks: BackgroundTasks, scope: 
         return {"message": "Shared event canceled for everyone"}
         
     else:
-        # Check if the invitee is deleting a shared event, if so, alert the organizer
         if event.get("parent_event_id") and not event.get("is_organizer"):
             org_event = await db["events"].find_one({"parent_event_id": event["parent_event_id"], "is_organizer": True})
             if org_event:
@@ -178,7 +171,6 @@ async def delete_event(event_id: str, background_tasks: BackgroundTasks, scope: 
                 except Exception as e:
                     print("Failed to dispatch cancellation email:", e)
                     
-        # Delete just this one
         await db["events"].delete_one({"_id": obj_id})
         unschedule_reminder(event_id)
         return {"message": "Event deleted successfully"}
@@ -203,7 +195,6 @@ async def update_event(event_id: str, event_req: EventCreate, background_tasks: 
     }
     
     if event.get("parent_event_id"):
-        # Editing a shared event
         if not event.get("is_organizer"):
             raise HTTPException(status_code=403, detail="Only the organizer can edit a shared event")
             
@@ -211,10 +202,8 @@ async def update_event(event_id: str, event_req: EventCreate, background_tasks: 
         linked_events = await cursor.to_list(length=None)
         
         for e in linked_events:
-            # First, update DB
             await db["events"].update_one({"_id": e["_id"]}, {"$set": update_data})
             
-            # Reschedule reminder
             unschedule_reminder(str(e["_id"]))
             
             try:
@@ -230,7 +219,6 @@ async def update_event(event_id: str, event_req: EventCreate, background_tasks: 
                         description=event_req.description
                     )
                     
-                    # If this is the invitee, send the "Event Updated" email
                     if str(e["user_id"]) != str(current_user["_id"]):
                         background_tasks.add_task(
                             send_event_updated_email,
@@ -246,7 +234,7 @@ async def update_event(event_id: str, event_req: EventCreate, background_tasks: 
                 
         return {"message": "Shared event updated successfully"}
     else:
-        # Solo Event Edit
+
         await db["events"].update_one({"_id": obj_id}, {"$set": update_data})
         unschedule_reminder(event_id)
         
